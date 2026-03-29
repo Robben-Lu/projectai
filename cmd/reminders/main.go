@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Robben-Lu/projectai/internal/applescript"
+	"github.com/Robben-Lu/projectai/internal/eventkit"
 )
 
 const usage = `reminders — CLI for Apple Reminders
@@ -56,7 +56,7 @@ func cmdLists() {
 	format := fs.String("format", "json", "Output format: json or table")
 	fs.Parse(os.Args[2:])
 
-	lists, err := applescript.GetLists()
+	lists, err := eventkit.GetLists()
 	exitOnErr(err)
 
 	if *format == "table" {
@@ -76,8 +76,28 @@ func cmdList() {
 	format := fs.String("format", "json", "Output format: json or table")
 	fs.Parse(os.Args[2:])
 
-	reminders, err := applescript.GetReminders(*listName, !*all)
+	ekReminders, err := eventkit.GetReminders(*listName, !*all)
 	exitOnErr(err)
+
+	// Convert to local Reminder type for filtering/display
+	reminders := make([]reminder, len(ekReminders))
+	for i, r := range ekReminders {
+		reminders[i] = reminder{
+			ID:        r.ID,
+			Title:     r.Title,
+			List:      r.List,
+			Priority:  r.Priority,
+			Completed: r.Completed,
+			Notes:     r.Notes,
+		}
+		if r.DueDate != "" {
+			if t, err := time.Parse(time.RFC3339, r.DueDate); err == nil {
+				reminders[i].DueDate = &t
+			} else if t, err := time.Parse("2006-01-02T15:04:05Z", r.DueDate); err == nil {
+				reminders[i].DueDate = &t
+			}
+		}
+	}
 
 	// Filter by due date if specified
 	if *due != "" {
@@ -107,16 +127,20 @@ func cmdAdd() {
 	}
 	title := strings.Join(fs.Args(), " ")
 
-	var dueDate *time.Time
+	var dueISO string
 	if *dueStr != "" {
 		t, err := parseDue(*dueStr)
 		exitOnErr(err)
-		dueDate = &t
+		dueISO = t.Format(time.RFC3339)
 	}
 
 	priority := parsePriority(*priorityStr)
+	ln := *listName
+	if ln == "" {
+		ln = "Reminders"
+	}
 
-	id, err := applescript.AddReminder(*listName, title, *notes, dueDate, priority)
+	id, err := eventkit.AddReminder(ln, title, *notes, dueISO, priority)
 	exitOnErr(err)
 
 	result := map[string]string{"id": id, "title": title, "status": "created"}
@@ -134,7 +158,7 @@ func cmdDone() {
 		os.Exit(1)
 	}
 	id := os.Args[2]
-	err := applescript.CompleteReminder(id)
+	err := eventkit.CompleteReminder(id)
 	exitOnErr(err)
 	printJSON(map[string]string{"id": id, "status": "completed"})
 }
@@ -146,12 +170,23 @@ func cmdDelete() {
 		os.Exit(1)
 	}
 	id := os.Args[2]
-	err := applescript.DeleteReminder(id)
+	err := eventkit.DeleteReminder(id)
 	exitOnErr(err)
 	printJSON(map[string]string{"id": id, "status": "deleted"})
 }
 
-func filterByDue(reminders []applescript.Reminder, due string) []applescript.Reminder {
+// reminder is a local type for filtering and display.
+type reminder struct {
+	ID        string     `json:"id"`
+	Title     string     `json:"title"`
+	List      string     `json:"list"`
+	DueDate   *time.Time `json:"due,omitempty"`
+	Priority  int        `json:"priority"`
+	Completed bool       `json:"completed"`
+	Notes     string     `json:"notes,omitempty"`
+}
+
+func filterByDue(reminders []reminder, due string) []reminder {
 	now := time.Now()
 	var start, end time.Time
 
@@ -169,7 +204,7 @@ func filterByDue(reminders []applescript.Reminder, due string) []applescript.Rem
 		return reminders // unknown filter, return all
 	}
 
-	var filtered []applescript.Reminder
+	var filtered []reminder
 	for _, r := range reminders {
 		if r.DueDate != nil && !r.DueDate.Before(start) && r.DueDate.Before(end) {
 			filtered = append(filtered, r)
@@ -251,7 +286,7 @@ func parsePriority(s string) int {
 	}
 }
 
-func printTable(reminders []applescript.Reminder) {
+func printTable(reminders []reminder) {
 	for _, r := range reminders {
 		due := ""
 		if r.DueDate != nil {

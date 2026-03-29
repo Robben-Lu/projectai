@@ -1,27 +1,34 @@
 ---
 name: projectai
-description: "Unified task management across GitHub, Google Tasks, Apple Reminders, and Drafts. Use when the user asks about tasks, todos, reminders, drafts, or wants a daily overview of their work."
+description: "Unified task management across GitHub, Google Tasks, and Apple Reminders. Use when the user asks about tasks, todos, reminders, or wants a daily overview of their work. Drafts CLI available on demand."
 ---
 
 # ProjectAI — AI-Native Task Aggregation
 
-You have access to four task/content sources through CLI tools. Use them to give the user a unified view of their work.
+You have access to three primary task sources and one on-demand content source through CLI tools.
 
-## Sources
+## Primary Sources (always included in daily aggregation)
 
 | Source | CLI | Role | Collaboration |
 |--------|-----|------|--------------|
 | **GitHub** | `gh` | Code project tasks (Issues, PRs, Project board) | Team |
 | **Google Tasks** | `gws tasks` | Business/work tasks | Team (via assignment in notes) |
 | **Apple Reminders** | `reminders` | Personal tasks & errands | Individual |
+
+## On-Demand Source (only when explicitly requested)
+
+| Source | CLI | Role | Collaboration |
+|--------|-----|------|--------------|
 | **Drafts** | `drafts` | Quick notes, ideas, meeting notes | Individual |
+
+> **Important**: Do NOT include Drafts in daily task aggregation. Only query Drafts when the user explicitly asks about notes, drafts, or ideas.
 
 ## When to use each source
 
 - **Code-related work** (bugs, features, refactors, infra) → GitHub Issue
 - **Business/work tasks** (meetings prep, follow-ups, approvals, coordination) → Google Tasks
 - **Personal errands** (shopping, appointments, personal reminders) → Apple Reminders
-- **Quick capture / notes / ideas** → Drafts
+- **Quick capture / notes / ideas** (on demand only) → Drafts
 
 ## CLI Reference
 
@@ -125,7 +132,7 @@ drafts tag <id> <tag>
 
 Run these three commands **in parallel** (use multiple Bash tool calls):
 
-1. **GitHub**: `gh project item-list 1 --owner Ecomulch --format json --limit 50` → filter for 进行中/待办
+1. **GitHub**: `gh project item-list 1 --owner Ecomulch --format json --limit 50` → filter for 进行中/待办/待验收
 2. **Google Tasks**: `gws tasks tasks list --params '{"tasklist":"<ID>","dueMax":"<today-end-RFC3339>","showCompleted":false}' --format json`
 3. **Reminders**: `reminders list --due today --format json`
 
@@ -139,7 +146,7 @@ Google      | -        | 准备周会材料                     | 14:00
 Reminder    | HIGH     | 取消订阅                        | today
 ```
 
-### "What notes/drafts do I have about X?"
+### "What notes/drafts do I have about X?" (on demand only)
 
 ```bash
 drafts search "X" --folder all --limit 10 --format table
@@ -147,7 +154,7 @@ drafts search "X" --folder all --limit 10 --format table
 
 ### "Show me all my open work"
 
-Run in parallel:
+Run these three commands in parallel:
 1. `gh issue list --assignee @me --state open --json number,title,repository`
 2. `gws tasks tasks list --params '{"tasklist":"<ID>","showCompleted":false}' --format json`
 3. `reminders list --format json`

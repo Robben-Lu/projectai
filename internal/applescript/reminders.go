@@ -59,27 +59,40 @@ end tell`
 // GetReminders returns reminders from a specific list (or all lists if listName is empty).
 // If onlyIncomplete is true, only returns non-completed reminders.
 func GetReminders(listName string, onlyIncomplete bool) ([]Reminder, error) {
+	if listName != "" {
+		return getRemindersFromList(listName, onlyIncomplete)
+	}
+	// No list specified: iterate each list to avoid global "every reminder" timeout
+	lists, err := GetLists()
+	if err != nil {
+		return nil, err
+	}
+	var all []Reminder
+	for _, l := range lists {
+		rs, err := getRemindersFromList(l.Name, onlyIncomplete)
+		if err != nil {
+			return nil, fmt.Errorf("list %q: %w", l.Name, err)
+		}
+		all = append(all, rs...)
+	}
+	return all, nil
+}
+
+// getRemindersFromList fetches reminders from one list using a single query + per-item loop.
+func getRemindersFromList(listName string, onlyIncomplete bool) ([]Reminder, error) {
 	var filter string
 	if onlyIncomplete {
 		filter = "whose completed is false"
 	}
 
-	var scope string
-	if listName != "" {
-		scope = fmt.Sprintf(`in list %q`, listName)
-	} else {
-		scope = ""
-	}
-
-	// Build AppleScript that outputs tab-separated fields, one reminder per line.
-	// Fields: id, name, list name, completed, priority, due date, body
+	// Single query, then per-item property access in a loop.
+	// This is faster than multiple bulk queries because each "whose" filter costs ~4s.
 	script := fmt.Sprintf(`tell application "Reminders"
 	set output to ""
-	set targetReminders to (every reminder %s %s)
+	set targetReminders to (every reminder in list %q %s)
 	repeat with r in targetReminders
 		set rId to id of r
 		set rName to name of r
-		set rList to name of container of r
 		set rCompleted to completed of r
 		set rPriority to priority of r
 		try
@@ -93,10 +106,10 @@ func GetReminders(listName string, onlyIncomplete bool) ([]Reminder, error) {
 		on error
 			set rBody to ""
 		end try
-		set output to output & rId & "	" & rName & "	" & rList & "	" & rCompleted & "	" & rPriority & "	" & rDue & "	" & rBody & linefeed
+		set output to output & rId & "	" & rName & "	" & %q & "	" & rCompleted & "	" & rPriority & "	" & rDue & "	" & rBody & linefeed
 	end repeat
 	return output
-end tell`, scope, filter)
+end tell`, listName, filter, listName)
 
 	out, err := Run(script)
 	if err != nil {

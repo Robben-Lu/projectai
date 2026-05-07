@@ -1,34 +1,44 @@
 ---
 name: projectai
-description: "Unified task management across GitHub, Google Tasks, and Apple Reminders. Use when the user asks about tasks, todos, reminders, or wants a daily overview of their work. Drafts CLI available on demand."
+description: "Unified task management across GitHub, Google Tasks, Apple Reminders, and flagged Drafts. Use projectai today when the user asks about tasks, todos, reminders, overdue work, or wants a daily overview."
 ---
 
 # ProjectAI — AI-Native Task Aggregation
 
-You have access to three primary task sources and one on-demand content source through CLI tools.
+You have access to one aggregation CLI plus the underlying source CLIs.
 
-## Primary Sources (always included in daily aggregation)
+> **Default rule**: For "today", daily overview, overdue, or "what should I look at" requests, run `projectai today` first. Do not manually call GitHub, Google Tasks, Reminders, and Drafts separately unless `projectai today` is unavailable or the user asks for source-level debugging.
 
-| Source | CLI | Role | Collaboration |
-|--------|-----|------|--------------|
-| **GitHub** | `gh` | Code project tasks (Issues, PRs, Project board) | Team |
-| **Google Tasks** | `gws tasks` | Business/work tasks | Team (via assignment in notes) |
-| **Apple Reminders** | `reminders` | Personal tasks & errands | Individual |
+## Aggregated CLI
 
-## On-Demand Source (only when explicitly requested)
+```bash
+# Daily working set across GitHub Project, Google Tasks, Apple Reminders, and flagged Drafts
+projectai today
+projectai today --format json
+projectai today --format ndjson
+projectai today --source github,gtasks
+projectai today --window 14d
 
-| Source | CLI | Role | Collaboration |
-|--------|-----|------|--------------|
-| **Drafts** | `drafts` | Quick notes, ideas, meeting notes | Individual |
+# Overdue only
+projectai overdue
 
-> **Important**: Do NOT include Drafts in daily task aggregation. Only query Drafts when the user explicitly asks about notes, drafts, or ideas.
+# GitHub Project source quick filter
+projectai gh --status 进行中
+projectai gh --priority P1 --system WorkForce
+```
+
+Use `--format json` for AI processing, `--format ndjson` for streaming, and default table output for humans. If one source CLI is missing or unauthenticated, `projectai today` warns and continues with the other sources.
+
+## Source CLIs
+
+Use source CLIs for creating/updating tasks, raw debugging, or detailed content queries after the aggregated view points to a specific source.
 
 ## When to use each source
 
 - **Code-related work** (bugs, features, refactors, infra) → GitHub Issue
 - **Business/work tasks** (meetings prep, follow-ups, approvals, coordination) → Google Tasks
 - **Personal errands** (shopping, appointments, personal reminders) → Apple Reminders
-- **Quick capture / notes / ideas** (on demand only) → Drafts
+- **Quick capture / notes / ideas** (flagged drafts appear in `projectai today`; full content search is on demand) → Drafts
 
 ## CLI Reference
 
@@ -130,21 +140,19 @@ drafts tag <id> <tag>
 
 ### "What are my tasks today?" / "今天有什么任务"
 
-Run these three commands **in parallel** (use multiple Bash tool calls):
+Run:
 
-1. **GitHub**: `gh project item-list 1 --owner Ecomulch --format json --limit 50` → filter for 进行中/待办/待验收
-2. **Google Tasks**: `gws tasks tasks list --params '{"tasklist":"<ID>","dueMax":"<today-end-RFC3339>","showCompleted":false}' --format json`
-3. **Reminders**: `reminders list --due today --format json`
-
-Then merge results and present as a unified table:
-
+```bash
+projectai today
 ```
-Source      | Priority | Task                          | Due
-------------|----------|-------------------------------|--------
-GitHub      | P1       | CashOps 应收逆向匹配            | -
-Google      | -        | 准备周会材料                     | 14:00
-Reminder    | HIGH     | 取消订阅                        | today
+
+For AI-readable output:
+
+```bash
+projectai today --format json
 ```
+
+Only fall back to manual per-source commands when `projectai today` is not installed, a source needs detailed debugging, or the user explicitly asks for the raw source output.
 
 ### "What notes/drafts do I have about X?" (on demand only)
 

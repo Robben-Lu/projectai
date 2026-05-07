@@ -3,12 +3,14 @@
 package eventkit
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 )
 
 // Reminder represents a single Apple Reminder item.
@@ -57,9 +59,14 @@ func runHelper(args ...string) ([]byte, error) {
 		return nil, err
 	}
 	cmd := exec.Command(hp, args...)
-	cmd.Stderr = os.Stderr
+	var stderr bytes.Buffer
+	cmd.Stderr = &stderr
 	out, err := cmd.Output()
 	if err != nil {
+		msg := strings.TrimSpace(stderr.String())
+		if msg != "" {
+			return nil, fmt.Errorf("reminders-helper %v: %s", args, msg)
+		}
 		return nil, fmt.Errorf("reminders-helper %v: %w", args, err)
 	}
 	return out, nil

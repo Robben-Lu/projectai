@@ -1,0 +1,48 @@
+{
+  "items": [
+    {
+      "content": {
+        "number": 488,
+        "repository": "Ecomulch/SDPT",
+        "title": "CashOps V13-V17 detail repair",
+        "type": "Issue",
+        "url": "https://github.com/Ecomulch/SDPT/issues/488"
+      },
+      "id": "PVTI_in_progress",
+      "priority": "P0",
+      "status": "进行中",
+      "system": "CashOps",
+      "title": "CashOps V13-V17 detail repair"
+    },
+    {
+      "content": {
+        "number": 489,
+        "repository": "Ecomulch/SDPT",
+        "title": "WorkForce overdue acceptance",
+        "type": "Issue",
+        "url": "https://github.com/Ecomulch/SDPT/issues/489"
+      },
+      "due": "2026-05-06",
+      "id": "PVTI_priority",
+      "priority": "P1",
+      "status": "已完成",
+      "system": "WorkForce",
+      "title": "WorkForce overdue acceptance"
+    },
+    {
+      "content": {
+        "number": 490,
+        "repository": "Ecomulch/SDPT",
+        "title": "Backlog item",
+        "type": "Issue",
+        "url": "https://github.com/Ecomulch/SDPT/issues/490"
+      },
+      "id": "PVTI_backlog",
+      "priority": "P2",
+      "status": "待办",
+      "system": "SmartSales360",
+      "title": "Backlog item"
+    }
+  ],
+  "totalCount": 3
+}
